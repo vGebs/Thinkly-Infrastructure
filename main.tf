@@ -32,15 +32,27 @@ module "ecs_cluster" {
 
   # Capacity provider
   fargate_capacity_providers = {
+    # FARGATE = {
+    #   default_capacity_provider_strategy = {
+    #     weight = 50
+    #     base   = 20
+    #   }
+    # }
+    # FARGATE_SPOT = {
+    #   default_capacity_provider_strategy = {
+    #     weight = 50
+    #   }
+    # }
     FARGATE = {
       default_capacity_provider_strategy = {
-        weight = 50
-        base   = 20
+        weight = 0
+        base   = 1
       }
     }
     FARGATE_SPOT = {
       default_capacity_provider_strategy = {
-        weight = 50
+        weight = 1
+        base   = 0
       }
     }
   }
@@ -81,6 +93,14 @@ module "ecs_service" {
       memory    = 1024
       essential = true
       image     = "078353502058.dkr.ecr.us-east-1.amazonaws.com/thinkly_backend:latest"
+
+      healthCheck = {
+        command  = ["CMD-SHELL", "curl -f http://localhost:3000/ping || exit 1"]
+        interval = 30
+        retries  = 3
+        timeout  = 5
+      }
+
       port_mappings = [
         {
           name          = local.container_name
@@ -233,6 +253,18 @@ module "alb" {
       backend_protocol = "HTTP"
       backend_port     = local.container_port
       target_type      = "ip"
+
+      health_check = {
+        enabled             = true
+        interval            = 30
+        path                = "/ping" # Replace with your actual health check path
+        port                = "traffic-port"
+        healthy_threshold   = 3
+        unhealthy_threshold = 3
+        timeout             = 5
+        protocol            = "HTTP"
+        matcher             = "200-299"
+      }
     },
   ]
 
